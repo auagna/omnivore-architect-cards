@@ -1,73 +1,48 @@
-# React + TypeScript + Vite
+# Omnivore Architect — 번개 모임 카드 에디터
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+잡식건축가(Omnivore Architect) 번개 모임 안내 카드를 직접 편집·생성할 수 있는 웹앱입니다.
+원본 PDF의 디자인(네이비 컬러, SUIT 폰트, 1:1 카드 레이아웃)을 그대로 재현하면서
+브라우저에서 바로 내용을 고칠 수 있습니다.
 
-Currently, two official plugins are available:
+🔗 **배포 주소:** https://auagna.github.io/omnivore-architect-cards/
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 주요 기능
 
-## React Compiler
+- **인라인 텍스트 편집** — 슬라이드 위 글자를 직접 클릭해서 수정
+- **글자 크기 조정** — 선택한 텍스트의 크기를 슬라이더로 조절
+- **배경 사진 변경** — 페이지별 배경 이미지 업로드 / 초기화
+- **페이지 추가·삭제·순서 변경** — 5종 템플릿(표지/장소/전시/일정/안내) 중 선택해 추가
+- **자동 저장** — 작업 내용이 브라우저(localStorage)에 자동 보관
+- **달력·안내 항목 편집** — 일정 표시 날짜/라벨, 안내사항 항목 추가
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 템플릿
 
-## Expanding the ESLint configuration
+| 템플릿 | 용도 |
+| --- | --- |
+| 표지 | 월/제목/분기 표지 (인물 사진 배경) |
+| 장소 안내 | 장소·일시·소개 카드 |
+| 전시 소개 | 전시 이미지 + 설명 + 관람 정보 |
+| 월 일정 | 달력 그리드 + 날짜 마커 |
+| 안내사항 | 번호 목록 + 마무리 문구 |
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 폰트
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+제목/본문은 [SUIT](https://github.com/sun-typeface/SUIT) 가변 폰트, 달력 숫자는 Montserrat를 사용합니다.
+원본 PDF와 동일한 글꼴 느낌을 유지합니다.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## 로컬 실행
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev      # 개발 서버 (http://localhost:5173)
+npm run build    # 프로덕션 빌드 → dist/
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 배포
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+`main` 브랜치에 푸시하면 GitHub Actions가 자동으로 빌드 후 GitHub Pages에 배포합니다
+(`.github/workflows/deploy.yml`). Pages용 base 경로는 빌드 시 `VITE_BASE` 환경변수로 주입됩니다.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## 기술 스택
+
+Vite · React · TypeScript · CSS Container Queries (텍스트 비례 스케일링)
