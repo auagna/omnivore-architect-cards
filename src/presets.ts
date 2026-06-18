@@ -257,6 +257,7 @@ function calendarLayer(): CalendarLayer {
     headerSize: 30,
     daySize: 34,
     letterSpacing: 0,
+    rowGap: 4,
     cardFill: BRAND.white,
     borderColor: BRAND.ink,
   };

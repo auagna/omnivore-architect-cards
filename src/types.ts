@@ -77,8 +77,19 @@ export interface CalendarLayer extends PositionedLayer {
   headerSize: number; // design px @REF
   daySize: number; // design px @REF
   letterSpacing: number; // em — 자간
+  rowGap: number; // design px @REF — 위아래 줄간격
   cardFill: string;
   borderColor: string;
+}
+
+// A saved 번개 (event project): a named set of slides with an event date,
+// used by the dashboard calendar and the 번개 list.
+export interface BungaeProject {
+  id: string;
+  name: string;
+  eventDate: string; // YYYY-MM-DD
+  slides: Slide[];
+  updatedAt: number;
 }
 
 // Compute calendar cells for a month. Returns full weeks (6×7 max).

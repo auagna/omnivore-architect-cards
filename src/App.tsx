@@ -13,6 +13,7 @@ import {
   TEMPLATE_LABELS,
   uid,
   type Align,
+  type BungaeProject,
   type CalendarLayer,
   type FilterLayer,
   type ImageLayer,
@@ -32,8 +33,15 @@ import {
   makeText,
 } from "./presets";
 import SlideCanvas from "./SlideCanvas";
+import Dashboard from "./Dashboard";
+import { loadBungaeList, saveBungaeList } from "./store";
 
-const STORAGE_KEY = "omnivore-architect-slides-v3";
+const todayYmd = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+const STORAGE_KEY = "omnivore-architect-slides-v4";
 const SWATCHES = [
   BRAND.blue, BRAND.blueDark, BRAND.red, "#ffffff", "#0b0b0b",
   "#222222", "#f5d76e", "#5dff5d", "#ff8a3d", "#7b61ff",
@@ -150,6 +158,20 @@ export default function App() {
   const addImgInputRef = useRef<HTMLInputElement | null>(null);
   const replaceImgInputRef = useRef<HTMLInputElement | null>(null);
   const importProjInputRef = useRef<HTMLInputElement | null>(null);
+
+  // ── 번개 list + views ──
+  const [view, setView] = useState<"create" | "dashboard">("create");
+  const [bungaeList, setBungaeList] = useState<BungaeProject[]>(() => loadBungaeList());
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [showSaveForm, setShowSaveForm] = useState(false);
+  const [saveName, setSaveName] = useState("");
+  const [saveDate, setSaveDate] = useState(todayYmd());
+
+  useEffect(() => {
+    saveBungaeList(bungaeList);
+  }, [bungaeList]);
+
+  const currentProject = bungaeList.find((p) => p.id === currentProjectId) ?? null;
 
   useEffect(() => {
     try {
@@ -365,6 +387,56 @@ export default function App() {
     }
   };
 
+  // ── 번개 list (in-app saved events) ──
+  const openSaveForm = () => {
+    setSaveName(currentProject?.name ?? "");
+    setSaveDate(currentProject?.eventDate ?? todayYmd());
+    setShowSaveForm(true);
+  };
+  const confirmSaveBungae = () => {
+    const name = saveName.trim() || "이름 없는 번개";
+    const snapshot = structuredClone(slides);
+    if (currentProjectId && currentProject) {
+      // update existing
+      setBungaeList((prev) =>
+        prev.map((p) =>
+          p.id === currentProjectId
+            ? { ...p, name, eventDate: saveDate, slides: snapshot, updatedAt: Date.now() }
+            : p
+        )
+      );
+    } else {
+      const id = uid();
+      setBungaeList((prev) => [
+        ...prev,
+        { id, name, eventDate: saveDate, slides: snapshot, updatedAt: Date.now() },
+      ]);
+      setCurrentProjectId(id);
+    }
+    setShowSaveForm(false);
+  };
+  const openBungae = (id: string) => {
+    const p = bungaeList.find((x) => x.id === id);
+    if (!p) return;
+    setSlides(structuredClone(p.slides));
+    setCurrentProjectId(id);
+    setCurrentIdx(0);
+    setSelectedId(null);
+    setView("create");
+  };
+  const deleteBungae = (id: string) => {
+    if (!confirm("이 번개를 목록에서 삭제할까요?")) return;
+    setBungaeList((prev) => prev.filter((p) => p.id !== id));
+    if (currentProjectId === id) setCurrentProjectId(null);
+  };
+  const newBungae = () => {
+    setSlides(structuredClone(defaultSlides));
+    setCurrentProjectId(null);
+    setCurrentIdx(0);
+    setSelectedId(null);
+    setView("create");
+  };
+
   // ── keyboard ──
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -403,6 +475,37 @@ export default function App() {
   if (!current) return null;
 
   return (
+    <div className="shell">
+      <div className="topbar">
+        <div className="topbar-brand">Omnivore Architect</div>
+        <div className="topbar-tabs">
+          <button
+            className={view === "create" ? "on" : ""}
+            onClick={() => setView("create")}
+          >
+            생성
+          </button>
+          <button
+            className={view === "dashboard" ? "on" : ""}
+            onClick={() => setView("dashboard")}
+          >
+            대시보드
+          </button>
+        </div>
+        <div className="topbar-status">
+          {view === "create" &&
+            (currentProject ? `편집 중: ${currentProject.name}` : "새 번개 (미저장)")}
+        </div>
+      </div>
+
+      {view === "dashboard" ? (
+        <Dashboard
+          list={bungaeList}
+          onOpen={openBungae}
+          onDelete={deleteBungae}
+          onNew={newBungae}
+        />
+      ) : (
     <div className="app">
       {/* ── LEFT: pages + layers ── */}
       <aside className="left">
@@ -570,13 +673,14 @@ export default function App() {
           </span>
           <div className="spacer" />
           {exportMsg && <span className="exporting">{exportMsg}</span>}
-          <button onClick={() => importProjInputRef.current?.click()}>불러오기</button>
-          <button onClick={saveProject}>저장</button>
+          <button className="primary" onClick={openSaveForm}>
+            {currentProject ? "번개 업데이트" : "번개로 저장"}
+          </button>
+          <button onClick={saveProject} title="현재 작업을 .json 파일로 백업">백업↓</button>
+          <button onClick={() => importProjInputRef.current?.click()} title=".json 파일 불러오기">복원↑</button>
           <button onClick={resetAll}>초기화</button>
           <button onClick={exportCurrent}>현재 PNG</button>
-          <button className="primary" onClick={exportAll}>
-            전체 PNG
-          </button>
+          <button onClick={exportAll}>전체 PNG</button>
         </div>
         <div className="stage">
           <SlideCanvas
@@ -630,6 +734,46 @@ export default function App() {
       <input ref={addImgInputRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) onAddImageFile(f); e.target.value = ""; }} />
       <input ref={replaceImgInputRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) onReplaceImageFile(f); e.target.value = ""; }} />
       <input ref={importProjInputRef} type="file" accept="application/json,.json" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) loadProject(f); e.target.value = ""; }} />
+    </div>
+      )}
+
+      {showSaveForm && (
+        <div className="modal-overlay" onClick={() => setShowSaveForm(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>번개로 저장</h3>
+            <div className="field">
+              <label>번개 이름</label>
+              <input
+                type="text"
+                value={saveName}
+                placeholder="예: 6월 퐁피두센터 한화"
+                autoFocus
+                onChange={(e) => setSaveName(e.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label>번개 날짜</label>
+              <input
+                type="date"
+                value={saveDate}
+                onChange={(e) => setSaveDate(e.target.value)}
+              />
+            </div>
+            {currentProject && (
+              <p className="hint">
+                기존 "{currentProject.name}" 번개를 업데이트합니다. 새로 만들려면
+                대시보드에서 <b>+ 새 번개</b>를 사용하세요.
+              </p>
+            )}
+            <div className="modal-actions">
+              <button onClick={() => setShowSaveForm(false)}>취소</button>
+              <button className="primary" onClick={confirmSaveBungae}>
+                저장
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1074,6 +1218,9 @@ function CalendarProps({
       </Field>
       <Field label={`자간 ${layer.letterSpacing}em`}>
         <Slider value={layer.letterSpacing} min={-0.1} max={0.5} step={0.01} onChange={(v) => patch({ letterSpacing: v } as Partial<Layer>)} />
+      </Field>
+      <Field label={`줄간격(위아래) ${layer.rowGap}`}>
+        <Slider value={layer.rowGap} min={0} max={40} step={1} onChange={(v) => patch({ rowGap: v } as Partial<Layer>)} />
       </Field>
     </>
   );

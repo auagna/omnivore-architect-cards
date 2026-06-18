@@ -32,6 +32,16 @@ function fillToCss(fill: Fill): string {
   return `linear-gradient(${fill.angle}deg, ${from}, ${to})`;
 }
 
+// Resolve an image src robustly: keep data:/http as-is, otherwise resolve the
+// bare filename against Vite's BASE_URL. This makes built-in example images
+// survive base-path changes AND stale localStorage from earlier deploys.
+function resolveSrc(src?: string): string | undefined {
+  if (!src) return src;
+  if (src.startsWith("data:") || src.startsWith("http")) return src;
+  const name = src.split("?")[0].replace(/\\/g, "/").split("/").pop() ?? "";
+  return asset(name);
+}
+
 type DragState = {
   mode: "move" | "resize";
   id: string;
@@ -137,7 +147,7 @@ const SlideCanvas = forwardRef<HTMLDivElement, Props>(function SlideCanvas(
   const bgStyle: CSSProperties =
     slide.background.type === "image" && slide.background.src
       ? {
-          backgroundImage: `url(${slide.background.src})`,
+          backgroundImage: `url(${resolveSrc(slide.background.src)})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
         }
@@ -279,7 +289,7 @@ function ImageView({ layer }: { layer: ImageLayer }) {
     <div
       className="layer-image"
       style={{
-        backgroundImage: layer.src ? `url(${layer.src})` : undefined,
+        backgroundImage: layer.src ? `url(${resolveSrc(layer.src)})` : undefined,
         backgroundColor: layer.src ? undefined : "#5dff5d",
         backgroundSize: layer.fit,
         backgroundPosition: "center",
@@ -320,7 +330,13 @@ function CalendarView({ layer }: { layer: CalendarLayer }) {
         color: layer.color,
       }}
     >
-      <div className="cal-grid" style={{ letterSpacing: `${layer.letterSpacing}em` }}>
+      <div
+        className="cal-grid"
+        style={{
+          letterSpacing: `${layer.letterSpacing}em`,
+          rowGap: cq(layer.rowGap),
+        }}
+      >
         {layer.headers.map((h, i) => (
           <div
             key={`h${i}`}
