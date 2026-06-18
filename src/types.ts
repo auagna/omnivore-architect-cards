@@ -7,7 +7,14 @@ export type Align = "left" | "center" | "right";
 
 export type Fill =
   | { type: "solid"; color: string }
-  | { type: "gradient"; from: string; to: string; angle: number };
+  | {
+      type: "gradient";
+      from: string;
+      fromA: number; // 0..1 alpha for start color
+      to: string;
+      toA: number; // 0..1 alpha for end color
+      angle: number;
+    };
 
 export interface BaseLayer {
   id: string;
@@ -59,15 +66,38 @@ export interface FilterLayer extends BaseLayer {
 
 export interface CalendarLayer extends PositionedLayer {
   kind: "calendar";
+  year: number;
+  month: number; // 1..12
   headers: string[];
-  grid: (number | null)[];
-  marker?: { day: number; label: string };
+  // highlighted range of current-month days (start..end inclusive)
+  range?: { start: number; end: number; label: string };
+  showAdjacent: boolean; // show prev/next month dates in empty cells
   color: string;
   markerColor: string;
   headerSize: number; // design px @REF
   daySize: number; // design px @REF
+  letterSpacing: number; // em — 자간
   cardFill: string;
   borderColor: string;
+}
+
+// Compute calendar cells for a month. Returns full weeks (6×7 max).
+export function buildCalendar(
+  year: number,
+  month: number
+): { day: number; inMonth: boolean }[] {
+  const firstDay = new Date(year, month - 1, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const prevDays = new Date(year, month - 1, 0).getDate();
+  const rows = Math.ceil((firstDay + daysInMonth) / 7);
+  const cells: { day: number; inMonth: boolean }[] = [];
+  for (let i = 0; i < rows * 7; i++) {
+    const off = i - firstDay;
+    if (off < 0) cells.push({ day: prevDays + off + 1, inMonth: false });
+    else if (off < daysInMonth) cells.push({ day: off + 1, inMonth: true });
+    else cells.push({ day: off - daysInMonth + 1, inMonth: false });
+  }
+  return cells;
 }
 
 export type Layer =
@@ -90,6 +120,18 @@ export interface Slide {
   background: Background;
   layers: Layer[]; // ordered bottom -> top
   showWatermark: boolean;
+  watermarkText: string;
+}
+
+/** hex (#rrggbb) + alpha (0..1) → rgba() string */
+export function hexToRgba(hex: string, alpha: number): string {
+  let h = hex.replace("#", "");
+  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+  const n = parseInt(h, 16);
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 export type TemplateType =
@@ -126,6 +168,11 @@ export const BRAND = {
 };
 
 export const uid = () => Math.random().toString(36).slice(2, 10);
+
+/** Resolve a /public asset against Vite's base (so it works on GitHub Pages
+ *  sub-paths, not just the domain root). */
+export const asset = (path: string) =>
+  import.meta.env.BASE_URL + path.replace(/^\//, "");
 
 /** Convert a design px value (@REF) to a cqw string for proportional sizing */
 export const cq = (px: number) => `${(px / REF) * 100}cqw`;

@@ -1,6 +1,7 @@
 import {
   BRAND,
   uid,
+  asset,
   type Slide,
   type TemplateType,
   type TextLayer,
@@ -90,8 +91,15 @@ export function makeGradientFilter(): FilterLayer {
     name: "그라디언트 필터",
     visible: true,
     locked: false,
-    fill: { type: "gradient", from: "#1a2da1", to: "#000000", angle: 180 },
-    opacity: 0.5,
+    fill: {
+      type: "gradient",
+      from: "#1a2da1",
+      fromA: 0.85,
+      to: "#000000",
+      toA: 0,
+      angle: 180,
+    },
+    opacity: 1,
   };
 }
 
@@ -99,9 +107,19 @@ export function makeGradientFilter(): FilterLayer {
 function coverSlide(): Slide {
   return {
     id: uid(),
-    background: { type: "image", src: "/default-cover.jpg", color: BRAND.blue },
+    background: { type: "image", src: asset("default-cover.jpg"), color: BRAND.blue },
     showWatermark: true,
+    watermarkText: "Omnivore Architect",
     layers: [
+      // OMNIVORE ARCHITECT 카드 로고 — 원본 레이아웃 좌표/회전 그대로
+      makeImage({
+        name: "카드 로고",
+        src: asset("oa-card-logo.png"),
+        x: 18.33, y: 20.62, w: 41.79, h: 26.42,
+        rotation: -19.16,
+        fit: "contain",
+        radius: 0,
+      }),
       makeText({
         name: "분기",
         text: "2026 3분기 잡식건축가 번개",
@@ -129,10 +147,11 @@ function infoSlide(): Slide {
     id: uid(),
     background: {
       type: "image",
-      src: "/default-location.jpg",
+      src: asset("default-location.png"),
       color: BRAND.blue,
     },
     showWatermark: true,
+    watermarkText: "Omnivore Architect",
     layers: [
       makeShape({
         name: "카드",
@@ -166,10 +185,11 @@ function exhibitionSlide(): Slide {
     id: uid(),
     background: { type: "color", color: BRAND.blue },
     showWatermark: true,
+    watermarkText: "Omnivore Architect",
     layers: [
       makeImage({
         name: "전시 포스터",
-        src: "/default-exhibition.png",
+        src: asset("default-exhibition.png"),
         x: 6, y: 15, w: 42, h: 58, fit: "cover", radius: 2,
       }),
       makeText({
@@ -227,19 +247,16 @@ function calendarLayer(): CalendarLayer {
     locked: false,
     rotation: 0,
     x: 8, y: 18, w: 84, h: 64,
+    year: 2026,
+    month: 6,
     headers: ["S", "M", "T", "W", "T", "F", "S"],
-    grid: [
-      31, 1, 2, 3, 4, 5, 6,
-      7, 8, 9, 10, 11, 12, 13,
-      14, 15, 16, 17, 18, 19, 20,
-      21, 22, 23, 24, 25, 26, 27,
-      28, 29, 30, null, null, null, null,
-    ],
-    marker: { day: 13, label: "퐁피두센터" },
+    range: { start: 13, end: 13, label: "퐁피두센터" },
+    showAdjacent: true,
     color: BRAND.ink,
     markerColor: BRAND.red,
     headerSize: 30,
     daySize: 34,
+    letterSpacing: 0,
     cardFill: BRAND.white,
     borderColor: BRAND.ink,
   };
@@ -250,6 +267,7 @@ function calendarSlide(): Slide {
     id: uid(),
     background: { type: "color", color: BRAND.blue },
     showWatermark: true,
+    watermarkText: "Omnivore Architect",
     layers: [
       makeText({
         name: "제목",
@@ -274,6 +292,7 @@ function notesSlide(): Slide {
     id: uid(),
     background: { type: "color", color: BRAND.blue },
     showWatermark: true,
+    watermarkText: "Omnivore Architect",
     layers: [
       makeShape({
         name: "카드",
@@ -332,6 +351,7 @@ export function makeSlide(template: TemplateType): Slide {
         id: uid(),
         background: { type: "color", color: BRAND.blue },
         showWatermark: true,
+    watermarkText: "Omnivore Architect",
         layers: [
           makeText({
             name: "제목",

@@ -33,7 +33,7 @@ import {
 } from "./presets";
 import SlideCanvas from "./SlideCanvas";
 
-const STORAGE_KEY = "omnivore-architect-slides-v2";
+const STORAGE_KEY = "omnivore-architect-slides-v3";
 const SWATCHES = [
   BRAND.blue, BRAND.blueDark, BRAND.red, "#ffffff", "#0b0b0b",
   "#222222", "#f5d76e", "#5dff5d", "#ff8a3d", "#7b61ff",
@@ -149,6 +149,7 @@ export default function App() {
   const bgInputRef = useRef<HTMLInputElement | null>(null);
   const addImgInputRef = useRef<HTMLInputElement | null>(null);
   const replaceImgInputRef = useRef<HTMLInputElement | null>(null);
+  const importProjInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     try {
@@ -250,12 +251,14 @@ export default function App() {
     if (currentIdx >= idx && currentIdx > 0) setCurrentIdx(currentIdx - 1);
   };
 
-  const movePage = (dir: -1 | 1) => {
-    const tgt = currentIdx + dir;
+  const movePage = (dir: -1 | 1) => movePageAt(currentIdx, dir);
+
+  const movePageAt = (idx: number, dir: -1 | 1) => {
+    const tgt = idx + dir;
     if (tgt < 0 || tgt >= slides.length) return;
     setSlides((prev) => {
       const next = [...prev];
-      [next[currentIdx], next[tgt]] = [next[tgt], next[currentIdx]];
+      [next[idx], next[tgt]] = [next[tgt], next[idx]];
       return next;
     });
     setCurrentIdx(tgt);
@@ -335,6 +338,30 @@ export default function App() {
       setCurrentIdx(origin);
       setExporting(false);
       setExportMsg("");
+    }
+  };
+
+  // ── project save / load (full settings as a .json file) ──
+  const saveProject = () => {
+    const data = JSON.stringify({ version: 3, slides }, null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const stamp = new Date().toISOString().slice(0, 10);
+    download(url, `omnivore-project-${stamp}.json`);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  const loadProject = async (file: File) => {
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const next = Array.isArray(parsed) ? parsed : parsed.slides;
+      if (!Array.isArray(next) || next.length === 0)
+        throw new Error("형식 오류");
+      setSlides(next);
+      setCurrentIdx(0);
+      setSelectedId(null);
+    } catch (e) {
+      alert("불러오기 실패: 올바른 프로젝트 파일이 아닙니다. (" + (e as Error).message + ")");
     }
   };
 
@@ -419,14 +446,37 @@ export default function App() {
                       : { background: s.background.color }
                   }
                 />
-                <span
-                  className="pi-del"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deletePage(i);
-                  }}
-                >
-                  ×
+                <span className="pi-actions">
+                  <span
+                    className="pi-move"
+                    title="위로"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      movePageAt(i, -1);
+                    }}
+                  >
+                    ↑
+                  </span>
+                  <span
+                    className="pi-move"
+                    title="아래로"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      movePageAt(i, 1);
+                    }}
+                  >
+                    ↓
+                  </span>
+                  <span
+                    className="pi-del"
+                    title="삭제"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deletePage(i);
+                    }}
+                  >
+                    ×
+                  </span>
                 </span>
               </button>
             ))}
@@ -520,6 +570,8 @@ export default function App() {
           </span>
           <div className="spacer" />
           {exportMsg && <span className="exporting">{exportMsg}</span>}
+          <button onClick={() => importProjInputRef.current?.click()}>불러오기</button>
+          <button onClick={saveProject}>저장</button>
           <button onClick={resetAll}>초기화</button>
           <button onClick={exportCurrent}>현재 PNG</button>
           <button className="primary" onClick={exportAll}>
@@ -577,6 +629,7 @@ export default function App() {
       <input ref={bgInputRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) onBgFile(f); e.target.value = ""; }} />
       <input ref={addImgInputRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) onAddImageFile(f); e.target.value = ""; }} />
       <input ref={replaceImgInputRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) onReplaceImageFile(f); e.target.value = ""; }} />
+      <input ref={importProjInputRef} type="file" accept="application/json,.json" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) loadProject(f); e.target.value = ""; }} />
     </div>
   );
 }
@@ -873,7 +926,7 @@ function FilterProps({
           </button>
           <button
             className={g.type === "gradient" ? "on" : ""}
-            onClick={() => patch({ fill: { type: "gradient", from: "#1a2da1", to: "#000000", angle: 180 } } as Partial<Layer>)}
+            onClick={() => patch({ fill: { type: "gradient", from: "#1a2da1", fromA: 0.85, to: "#000000", toA: 0, angle: 180 } } as Partial<Layer>)}
           >
             그라디언트
           </button>
@@ -888,8 +941,14 @@ function FilterProps({
           <Field label="시작 색">
             <ColorInput value={g.from} onChange={(c) => patch({ fill: { ...g, from: c } } as Partial<Layer>)} />
           </Field>
+          <Field label={`시작 투명도 ${Math.round(g.fromA * 100)}%`}>
+            <Slider value={g.fromA} min={0} max={1} step={0.05} onChange={(v) => patch({ fill: { ...g, fromA: v } } as Partial<Layer>)} />
+          </Field>
           <Field label="끝 색">
             <ColorInput value={g.to} onChange={(c) => patch({ fill: { ...g, to: c } } as Partial<Layer>)} />
+          </Field>
+          <Field label={`끝 투명도 ${Math.round(g.toA * 100)}%`}>
+            <Slider value={g.toA} min={0} max={1} step={0.05} onChange={(v) => patch({ fill: { ...g, toA: v } } as Partial<Layer>)} />
           </Field>
           <Field label={`각도 ${g.angle}°`}>
             <Slider value={g.angle} min={0} max={360} onChange={(v) => patch({ fill: { ...g, angle: v } } as Partial<Layer>)} />
@@ -910,49 +969,111 @@ function CalendarProps({
   layer: CalendarLayer;
   patch: (p: Partial<Layer>) => void;
 }) {
+  const daysInMonth = new Date(layer.year, layer.month, 0).getDate();
+  const r = layer.range;
+  const setRange = (next: Partial<{ start: number; end: number; label: string }>) => {
+    const base = r ?? { start: 1, end: 1, label: "" };
+    const merged = { ...base, ...next };
+    if (merged.end < merged.start) merged.end = merged.start;
+    patch({ range: merged } as Partial<Layer>);
+  };
   return (
     <>
+      <div className="xy-grid">
+        <Field label="년도">
+          <input
+            type="number"
+            value={layer.year}
+            onChange={(e) => patch({ year: parseInt(e.target.value, 10) || layer.year } as Partial<Layer>)}
+          />
+        </Field>
+        <Field label="월 (1-12)">
+          <input
+            type="number"
+            min={1}
+            max={12}
+            value={layer.month}
+            onChange={(e) => {
+              const m = Math.min(12, Math.max(1, parseInt(e.target.value, 10) || 1));
+              patch({ month: m } as Partial<Layer>);
+            }}
+          />
+        </Field>
+      </div>
+      <p className="hint">년·월을 정하면 달력이 자동 생성됩니다. (현재 {layer.year}년 {layer.month}월, {daysInMonth}일까지)</p>
+
+      <div className="section">강조 범위</div>
+      <div className="xy-grid">
+        <Field label="시작일">
+          <input
+            type="number"
+            min={1}
+            max={daysInMonth}
+            value={r?.start ?? ""}
+            placeholder="없음"
+            onChange={(e) => {
+              const v = e.target.value.trim();
+              if (!v) return patch({ range: undefined } as Partial<Layer>);
+              setRange({ start: parseInt(v, 10) });
+            }}
+          />
+        </Field>
+        <Field label="종료일">
+          <input
+            type="number"
+            min={1}
+            max={daysInMonth}
+            value={r?.end ?? ""}
+            placeholder="시작일과 동일"
+            onChange={(e) => {
+              const v = e.target.value.trim();
+              setRange({ end: v ? parseInt(v, 10) : r?.start ?? 1 });
+            }}
+          />
+        </Field>
+      </div>
+      <Field label="범위 라벨">
+        <input
+          type="text"
+          value={r?.label ?? ""}
+          placeholder="예: 퐁피두센터"
+          onChange={(e) => setRange({ label: e.target.value })}
+        />
+      </Field>
+      {r && (
+        <button
+          className="full"
+          onClick={() => patch({ range: undefined } as Partial<Layer>)}
+        >
+          강조 제거
+        </button>
+      )}
+
+      <div className="section">스타일</div>
       <Field label="글자 색">
         <ColorInput value={layer.color} onChange={(c) => patch({ color: c } as Partial<Layer>)} />
       </Field>
       <Field label="강조 색(원)">
         <ColorInput value={layer.markerColor} onChange={(c) => patch({ markerColor: c } as Partial<Layer>)} />
       </Field>
-      <div className="xy-grid">
-        <Field label="강조 날짜">
+      <Field label="이전·다음 달 날짜">
+        <label className="check">
           <input
-            type="number"
-            value={layer.marker?.day ?? ""}
-            onChange={(e) => {
-              const v = e.target.value.trim();
-              const day = v ? parseInt(v, 10) : NaN;
-              patch({ marker: !isNaN(day) ? { day, label: layer.marker?.label ?? "" } : undefined } as Partial<Layer>);
-            }}
+            type="checkbox"
+            checked={layer.showAdjacent}
+            onChange={(e) => patch({ showAdjacent: e.target.checked } as Partial<Layer>)}
           />
-        </Field>
-        <Field label="라벨">
-          <input
-            type="text"
-            value={layer.marker?.label ?? ""}
-            onChange={(e) => patch({ marker: { day: layer.marker?.day ?? 1, label: e.target.value } } as Partial<Layer>)}
-          />
-        </Field>
-      </div>
+          빈 칸에 흐리게 표시
+        </label>
+      </Field>
       <Field label={`요일 글자 ${layer.headerSize}`}>
         <Slider value={layer.headerSize} min={14} max={48} onChange={(v) => patch({ headerSize: v } as Partial<Layer>)} />
       </Field>
       <Field label={`날짜 글자 ${layer.daySize}`}>
         <Slider value={layer.daySize} min={14} max={56} onChange={(v) => patch({ daySize: v } as Partial<Layer>)} />
       </Field>
-      <Field label="날짜 (쉼표 구분, 빈칸은 -)">
-        <textarea
-          rows={5}
-          value={layer.grid.map((d) => (d === null ? "-" : d)).join(",")}
-          onChange={(e) => {
-            const cells = e.target.value.split(",").map((x) => x.trim()).map((x) => (x === "" || x === "-" ? null : parseInt(x, 10)));
-            patch({ grid: cells } as Partial<Layer>);
-          }}
-        />
+      <Field label={`자간 ${layer.letterSpacing}em`}>
+        <Slider value={layer.letterSpacing} min={-0.1} max={0.5} step={0.01} onChange={(v) => patch({ letterSpacing: v } as Partial<Layer>)} />
       </Field>
     </>
   );
@@ -990,10 +1111,11 @@ function SlideProps({
           )}
         </>
       )}
-      <Field label="워터마크">
+      <div className="section">워터마크</div>
+      <Field label="하단 로고">
         <label className="check">
           <input type="checkbox" checked={slide.showWatermark} onChange={toggleWm} />
-          하단 Omnivore Architect 표시
+          Omnivore Architect 로고 표시
         </label>
       </Field>
       <p className="hint">

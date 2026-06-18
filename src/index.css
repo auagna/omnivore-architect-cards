@@ -58,7 +58,10 @@ input, textarea, select { font-family: inherit; }
 .page-item.active { border-color: var(--brand-blue); box-shadow: 0 0 0 2px rgba(26,45,161,0.15); }
 .pi-num { font-size: 11px; font-weight: 800; width: 16px; color: var(--muted); }
 .pi-thumb { width: 40px; height: 40px; border-radius: 5px; background-size: cover; background-position: center; flex: none; }
-.pi-del { margin-left: auto; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; }
+.pi-actions { margin-left: auto; display: flex; align-items: center; gap: 2px; }
+.pi-move { width: 18px; height: 18px; border-radius: 5px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 12px; font-weight: 700; }
+.pi-move:hover { background: var(--brand-blue); color: #fff; }
+.pi-del { width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 13px; }
 .pi-del:hover { background: var(--accent-red); color: #fff; }
 
 .template-picker { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-bottom: 10px; }
@@ -132,14 +135,19 @@ input, textarea, select { font-family: inherit; }
   border-radius: 3px; cursor: nwse-resize; z-index: 5;
 }
 
-/* watermark */
-.wm {
-  position: absolute; bottom: 3%; left: 50%; transform: translateX(-50%);
-  z-index: 6; display: flex; flex-direction: column; align-items: center; gap: 4px;
-  color: #fff; font-family: "Montserrat", "Courier New", monospace;
-  font-size: 1.8cqw; font-weight: 900; letter-spacing: 0.05em; pointer-events: none;
+/* watermark — original wordmark logo at its exact layout position.
+   The source PNG is black-on-transparent; the original deck shows it white
+   on the navy, so we recolor black→white to match that appearance. */
+.wm-img {
+  position: absolute;
+  left: 40.85%;
+  top: 91.76%;
+  width: 18.38%;
+  z-index: 6;
+  pointer-events: none;
+  user-select: none;
+  filter: brightness(0) invert(1);
 }
-.wm-pixel { width: 1.6cqw; height: 1.1cqw; background: #fff; }
 
 /* calendar layer */
 .cal-card { width: 100%; height: 100%; display: flex; flex-direction: column; padding: 4% 4%; }

@@ -7,6 +7,9 @@ import {
 } from "react";
 import {
   cq,
+  buildCalendar,
+  hexToRgba,
+  asset,
   type Slide,
   type Layer,
   type TextLayer,
@@ -24,7 +27,9 @@ const FONT_FAMILY: Record<string, string> = {
 
 function fillToCss(fill: Fill): string {
   if (fill.type === "solid") return fill.color;
-  return `linear-gradient(${fill.angle}deg, ${fill.from}, ${fill.to})`;
+  const from = hexToRgba(fill.from, fill.fromA);
+  const to = hexToRgba(fill.to, fill.toA);
+  return `linear-gradient(${fill.angle}deg, ${from}, ${to})`;
 }
 
 type DragState = {
@@ -210,10 +215,12 @@ const SlideCanvas = forwardRef<HTMLDivElement, Props>(function SlideCanvas(
       })}
 
       {slide.showWatermark && (
-        <div className="wm">
-          <span className="wm-pixel" />
-          <span className="wm-text">Omnivore Architect</span>
-        </div>
+        <img
+          className="wm-img"
+          src={asset("oa-wordmark.png")}
+          alt="Omnivore Architect"
+          draggable={false}
+        />
       )}
     </div>
   );
@@ -299,6 +306,10 @@ function ShapeView({ layer }: { layer: ShapeLayer }) {
 }
 
 function CalendarView({ layer }: { layer: CalendarLayer }) {
+  const cells = buildCalendar(layer.year, layer.month);
+  const r = layer.range;
+  const inRange = (day: number, inMonth: boolean) =>
+    inMonth && !!r && day >= r.start && day <= r.end;
   return (
     <div
       className="cal-card"
@@ -309,7 +320,7 @@ function CalendarView({ layer }: { layer: CalendarLayer }) {
         color: layer.color,
       }}
     >
-      <div className="cal-grid">
+      <div className="cal-grid" style={{ letterSpacing: `${layer.letterSpacing}em` }}>
         {layer.headers.map((h, i) => (
           <div
             key={`h${i}`}
@@ -319,31 +330,34 @@ function CalendarView({ layer }: { layer: CalendarLayer }) {
             {h}
           </div>
         ))}
-        {layer.grid.map((d, i) => (
-          <div
-            key={`d${i}`}
-            className="cal-day"
-            style={{ fontSize: cq(layer.daySize) }}
-          >
-            {d && layer.marker?.day === d ? (
-              <>
+        {cells.map((c, i) => {
+          const hot = inRange(c.day, c.inMonth);
+          const showLabel = hot && r?.label && c.day === r.start;
+          return (
+            <div
+              key={`d${i}`}
+              className="cal-day"
+              style={{
+                fontSize: cq(layer.daySize),
+                opacity: c.inMonth ? 1 : layer.showAdjacent ? 0.32 : 0,
+              }}
+            >
+              {hot ? (
                 <span
                   className="cal-marker"
                   style={{ background: layer.markerColor, color: "#fff" }}
                 >
-                  {d}
+                  {c.day}
                 </span>
-                {layer.marker?.label && (
-                  <span className="cal-marker-label">{layer.marker.label}</span>
-                )}
-              </>
-            ) : d !== null ? (
-              d
-            ) : (
-              ""
-            )}
-          </div>
-        ))}
+              ) : (
+                c.day
+              )}
+              {showLabel && (
+                <span className="cal-marker-label">{r!.label}</span>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

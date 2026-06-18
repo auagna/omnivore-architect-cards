@@ -77,6 +77,21 @@ async function embedStyleUrls(el: HTMLElement) {
   await Promise.all(jobs);
 }
 
+// Inline <img src> as data URLs — relative/sub-path srcs don't resolve inside
+// the SVG, and only data URLs render reliably in the rasterized output.
+async function embedImgTags(el: HTMLElement) {
+  const imgs = Array.from(el.querySelectorAll("img"));
+  await Promise.all(
+    imgs.map(async (img) => {
+      const raw = img.getAttribute("src");
+      if (!raw || raw.startsWith("data:")) return;
+      const abs = new URL(raw, location.href).href;
+      const data = await urlToDataUrl(abs);
+      if (data) img.setAttribute("src", data);
+    })
+  );
+}
+
 export async function nodeToPng(
   node: HTMLElement,
   targetPx: number,
@@ -88,6 +103,7 @@ export async function nodeToPng(
   const clone = node.cloneNode(true) as HTMLElement;
   walk(node, clone);
   await embedStyleUrls(clone);
+  await embedImgTags(clone);
 
   // ensure the clone is laid out at the source box size
   clone.style.width = `${w}px`;
